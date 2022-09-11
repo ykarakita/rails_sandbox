@@ -120,7 +120,7 @@ GEM
     nokogiri (1.13.6-x86_64-linux)
       racc (~> 1.4)
     pg (1.4.3)
-    puma (5.6.4)
+    puma (5.6.5)
       nio4r (~> 2.0)
     racc (1.6.0)
     rack (2.2.4)
@@ -175,7 +175,7 @@ DEPENDENCIES
   factory_bot_rails
   faker
   pg (~> 1.4)
-  puma (~> 5.0)
+  puma (~> 5.6)
   rails (~> 7.0.4)
   tzinfo-data
 

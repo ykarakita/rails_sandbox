@@ -27,3 +27,6 @@ Style/TrailingCommaInArrayLiteral:
 
 Style/TrailingCommaInHashLiteral:
   EnforcedStyleForMultiline: comma
+
+Layout/LineLength:
+  Enabled: false

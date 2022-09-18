@@ -15,7 +15,7 @@ RSpec.describe "UsersController", type: :request do
 
     it do
       subject
-      expect(JSON.parse(response.body, symbolize_names: true)).to match_array(users.map { UserSerializer.new(_1).attributes })
+      expect(JSON.parse(response.body, symbolize_names: true)).to match_array(users.map { UserSerializer.new(_1).as_json })
     end
   end
 end

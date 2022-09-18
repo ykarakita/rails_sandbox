@@ -2,6 +2,7 @@
 
 class PostsController < ApplicationController
   def index
-    render json: Post.includes(:user)
+    posts = Post.includes(:user).order(created_at: :desc).page(params[:page]).per(params[:per])
+    render json: posts
   end
 end

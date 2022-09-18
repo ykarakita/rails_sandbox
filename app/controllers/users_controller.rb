@@ -2,6 +2,7 @@
 
 class UsersController < ApplicationController
   def index
-    render json: User.all
+    users = User.order(created_at: :desc).page(params[:page]).per(params[:per])
+    render json: users
   end
 end

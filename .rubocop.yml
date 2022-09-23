@@ -1,3 +1,7 @@
+require:
+  - rubocop-rails
+  - rubocop-rspec
+
 AllCops:
   Exclude:
     - 'vendor/**/*'
@@ -29,4 +33,11 @@ Style/TrailingCommaInHashLiteral:
   EnforcedStyleForMultiline: comma
 
 Layout/LineLength:
+  Enabled: false
+
+# rubocop-rspec
+RSpec/NamedSubject:
+  Enabled: false
+
+RSpec/ExampleLength:
   Enabled: false

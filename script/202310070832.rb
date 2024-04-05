@@ -1,4 +1,6 @@
-ActiveRecord::Base.logger = Logger.new(STDOUT)
+# frozen_string_literal: true
+
+ActiveRecord::Base.logger = Logger.new($stdout)
 
 puts "======== left_outer_joins ========="
 # => 外部結合して主テーブルを絞り込んだりソートしたりしたいときに使う
@@ -31,7 +33,6 @@ puts users.size
 #
 #    以下 N+1
 
-
 puts "======== eager_load ========="
 # => 外部結合して主テーブルを絞り込んだりソートしたりしたい、かつ、結合した関連テーブルのデータも参照したい場合に使う
 
@@ -63,7 +64,6 @@ puts users.size
 #       ON "posts"."user_id" = "users"."id"
 #   ORDER BY
 #     posts.created_at
-
 
 puts "======== preload ========="
 # => 関連テーブルのデータでソートや絞り込みをする必要がない場合に使う

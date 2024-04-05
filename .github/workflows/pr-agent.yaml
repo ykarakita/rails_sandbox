@@ -13,6 +13,10 @@ permissions:
 jobs:
   pr_agent:
     runs-on: ubuntu-latest
+    permissions:
+      issues: write
+      pull-requests: write
+      contents: write
     name: Run PR Agent
     if: ${{ github.event.sender.type != 'Bot' }}
     steps:

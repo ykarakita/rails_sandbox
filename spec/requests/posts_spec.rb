@@ -19,4 +19,20 @@ RSpec.describe "PostsController", type: :request do
       expect(JSON.parse(response.body, symbolize_names: true)).to match(sorted_posts.map { PostSerializer.new(_1).as_json })
     end
   end
+
+  describe "GET #show" do
+    subject { get post_path(post) }
+
+    let!(:post) { FactoryBot.create(:post) }
+
+    it do
+      subject
+      expect(response.status).to eq 200
+    end
+
+    it do
+      subject
+      expect(JSON.parse(response.body, symbolize_names: true)).to match(PostSerializer.new(post).as_json)
+    end
+  end
 end

@@ -35,6 +35,9 @@ Style/TrailingCommaInHashLiteral:
 Layout/LineLength:
   Enabled: false
 
+Style/FrozenStringLiteralComment:
+  Enabled: false
+
 # rubocop-rspec
 RSpec/NamedSubject:
   Enabled: false

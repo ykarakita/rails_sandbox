@@ -1,7 +1,5 @@
 # frozen_string_literal: true
 
-require "rails_helper"
-
 RSpec.describe UserSerializer, type: :serializer do
   let(:instance) { described_class.new(user) }
   let!(:user) { FactoryBot.create(:user) }

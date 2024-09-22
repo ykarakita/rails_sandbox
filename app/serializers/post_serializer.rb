@@ -1,7 +1,9 @@
 # frozen_string_literal: true
 
-class PostSerializer < ActiveModel::Serializer
+class PostSerializer
+  include Alba::Resource
+
   attributes :id, :content
 
-  belongs_to :user
+  one :user
 end

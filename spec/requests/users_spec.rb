@@ -16,7 +16,7 @@ RSpec.describe "UsersController", type: :request do
     it do
       subject
       sorted_users = users.sort_by(&:created_at).reverse
-      expect(JSON.parse(response.body, symbolize_names: true)).to match(sorted_users.map { UserSerializer.new(_1).as_json })
+      expect(JSON.parse(response.body)).to match(sorted_users.map { UserSerializer.new(_1).serializable_hash })
     end
   end
 end

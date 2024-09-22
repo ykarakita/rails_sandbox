@@ -8,10 +8,10 @@ RSpec.describe PostSerializer, type: :serializer do
   let!(:user) { FactoryBot.create(:user) }
 
   it do
-    expect(instance.as_json).to eq({
-                                     id: post.id,
-                                     content: post.content,
-                                     user: UserSerializer.new(user).attributes,
-                                   })
+    expect(instance.serializable_hash).to eq({
+                                               "id" => post.id,
+                                               "content" => post.content,
+                                               "user" => UserSerializer.new(user).serializable_hash,
+                                             })
   end
 end

@@ -42,8 +42,6 @@ echo "   Slack thread: ${SLACK_THREAD_TS}"
 # -----------------------------------------------------------
 # 2. ask-human.sh を生成（エージェント内で Slack 質問に使う）
 # -----------------------------------------------------------
-# セッション内のコンテナにファイルとして渡すため、
-# エージェントへの指示メッセージ内にインラインで含める
 ASK_HUMAN_SCRIPT=$(cat <<'ASKEOF'
 #!/bin/bash
 # Slack で人間に質問し、返答を待つスクリプト
@@ -119,10 +117,8 @@ fi
 echo "   Session ID: ${SESSION_ID}"
 
 # -----------------------------------------------------------
-# 4. ユーザーメッセージ送信（Issue の内容 + 作業指示）
+# 4. ユーザーメッセージを準備
 # -----------------------------------------------------------
-echo ">> Sending issue context to agent..."
-
 USER_MESSAGE=$(cat <<MSGEOF
 以下の GitHub Issue を実装してください。
 
@@ -173,10 +169,37 @@ git checkout -b "\${BRANCH_NAME}"
 MSGEOF
 )
 
-# メッセージを JSON-safe にエスケープして送信
 MESSAGE_JSON=$(jq -n --arg text "$USER_MESSAGE" \
   '{events: [{type: "user.message", content: [{type: "text", text: $text}]}]}')
 
+# -----------------------------------------------------------
+# 5. SSE ストリームを開いてからメッセージを送信
+#    公式ドキュメントの推奨順序:
+#    1) ストリームをバックグラウンドで開始
+#    2) メッセージを送信
+#    3) ストリームからイベントを読み取る
+# -----------------------------------------------------------
+STREAM_FIFO=$(mktemp -u)
+mkfifo "$STREAM_FIFO"
+trap "rm -f $STREAM_FIFO" EXIT
+
+echo ">> Opening SSE stream..."
+
+# バックグラウンドでストリームを開始し FIFO に書き込む
+curl -sS -N \
+  "${API_BASE}/sessions/${SESSION_ID}/stream" \
+  -H "x-api-key: ${ANTHROPIC_API_KEY}" \
+  -H "anthropic-version: 2023-06-01" \
+  -H "anthropic-beta: managed-agents-2026-04-01" \
+  -H "Accept: text/event-stream" \
+  > "$STREAM_FIFO" 2>/dev/null &
+CURL_PID=$!
+
+# ストリーム接続が確立するのを少し待つ
+sleep 2
+
+# メッセージ送信
+echo ">> Sending issue context to agent..."
 curl -sS --fail-with-body \
   "${API_BASE}/sessions/${SESSION_ID}/events" \
   "${HEADERS[@]}" \
@@ -185,16 +208,12 @@ curl -sS --fail-with-body \
 echo "   Message sent."
 
 # -----------------------------------------------------------
-# 5. SSE ストリームを監視
+# 6. ストリームからイベントを読み取る
 # -----------------------------------------------------------
 echo ">> Monitoring agent (Session: ${SESSION_ID})..."
 echo "=========================================="
 
-# SSE ストリームを受信して進捗を表示
-curl -sS -N --fail-with-body \
-  "${API_BASE}/sessions/${SESSION_ID}/events/stream" \
-  "${HEADERS[@]}" | while IFS= read -r line; do
-
+while IFS= read -r line; do
   # SSE の data: 行だけ処理
   [[ "$line" == data:* ]] || continue
   json="${line#data: }"
@@ -203,7 +222,6 @@ curl -sS -N --fail-with-body \
 
   case "$event_type" in
     agent.message)
-      # エージェントのテキスト出力
       echo "$json" | jq -j '.content[]? | select(.type == "text") | .text'
       ;;
     agent.tool_use)
@@ -231,7 +249,10 @@ curl -sS -N --fail-with-body \
       break
       ;;
   esac
-done
+done < "$STREAM_FIFO"
+
+# バックグラウンドの curl を停止
+kill "$CURL_PID" 2>/dev/null || true
 
 echo "=========================================="
 echo "Session ${SESSION_ID} completed."

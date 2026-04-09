@@ -14,6 +14,9 @@ set -euo pipefail
 : "${ENVIRONMENT_ID:?required}"
 : "${ISSUE_NUMBER:?required}"
 
+# ISSUE_BODY が空の場合のフォールバック
+ISSUE_BODY="${ISSUE_BODY:-（本文なし。タイトルから実装内容を判断してください。）}"
+
 API_BASE="https://api.anthropic.com/v1"
 HEADERS=(
   -H "x-api-key: ${ANTHROPIC_API_KEY}"
@@ -173,32 +176,11 @@ MESSAGE_JSON=$(jq -n --arg text "$USER_MESSAGE" \
   '{events: [{type: "user.message", content: [{type: "text", text: $text}]}]}')
 
 # -----------------------------------------------------------
-# 5. SSE ストリームを開いてからメッセージを送信
-#    公式ドキュメントの推奨順序:
-#    1) ストリームをバックグラウンドで開始
-#    2) メッセージを送信
-#    3) ストリームからイベントを読み取る
+# 5. メッセージを送信してからストリームを読む
+#    公式 CLI 例に合わせた順序:
+#    1) メッセージ送信（API がバッファする）
+#    2) ストリームを開いてイベントを受信
 # -----------------------------------------------------------
-STREAM_FIFO=$(mktemp -u)
-mkfifo "$STREAM_FIFO"
-trap "rm -f $STREAM_FIFO" EXIT
-
-echo ">> Opening SSE stream..."
-
-# バックグラウンドでストリームを開始し FIFO に書き込む
-curl -sS -N \
-  "${API_BASE}/sessions/${SESSION_ID}/stream" \
-  -H "x-api-key: ${ANTHROPIC_API_KEY}" \
-  -H "anthropic-version: 2023-06-01" \
-  -H "anthropic-beta: managed-agents-2026-04-01" \
-  -H "Accept: text/event-stream" \
-  > "$STREAM_FIFO" 2>/dev/null &
-CURL_PID=$!
-
-# ストリーム接続が確立するのを少し待つ
-sleep 2
-
-# メッセージ送信
 echo ">> Sending issue context to agent..."
 curl -sS --fail-with-body \
   "${API_BASE}/sessions/${SESSION_ID}/events" \
@@ -208,11 +190,12 @@ curl -sS --fail-with-body \
 echo "   Message sent."
 
 # -----------------------------------------------------------
-# 6. ストリームからイベントを読み取る
+# 6. SSE ストリームを読み取る
 # -----------------------------------------------------------
 echo ">> Monitoring agent (Session: ${SESSION_ID})..."
 echo "=========================================="
 
+# process substitution でストリームを読む
 while IFS= read -r line; do
   # SSE の data: 行だけ処理
   [[ "$line" == data:* ]] || continue
@@ -249,10 +232,15 @@ while IFS= read -r line; do
       break
       ;;
   esac
-done < "$STREAM_FIFO"
-
-# バックグラウンドの curl を停止
-kill "$CURL_PID" 2>/dev/null || true
+done < <(
+  curl -sS -N \
+    "${API_BASE}/sessions/${SESSION_ID}/stream" \
+    -H "x-api-key: ${ANTHROPIC_API_KEY}" \
+    -H "anthropic-version: 2023-06-01" \
+    -H "anthropic-beta: managed-agents-2026-04-01" \
+    -H "Accept: text/event-stream" \
+    2>/dev/null
+)
 
 echo "=========================================="
 echo "Session ${SESSION_ID} completed."

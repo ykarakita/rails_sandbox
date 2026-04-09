@@ -21,7 +21,7 @@ API_BASE="https://api.anthropic.com/v1"
 HEADERS=(
   -H "x-api-key: ${ANTHROPIC_API_KEY}"
   -H "anthropic-version: 2023-06-01"
-  -H "anthropic-beta: managed-agents-2026-04-01"
+  -H "anthropic-beta: agent-api-2026-03-01"
   -H "content-type: application/json"
 )
 
@@ -237,7 +237,7 @@ done < <(
     "${API_BASE}/sessions/${SESSION_ID}/stream" \
     -H "x-api-key: ${ANTHROPIC_API_KEY}" \
     -H "anthropic-version: 2023-06-01" \
-    -H "anthropic-beta: managed-agents-2026-04-01" \
+    -H "anthropic-beta: agent-api-2026-03-01" \
     -H "Accept: text/event-stream" \
     2>/dev/null
 )

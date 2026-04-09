@@ -1,0 +1,60 @@
+# .github/workflows/claude-agent.yml
+#
+# GitHub Issue に `claude-work` ラベルが付いたら
+# Claude Managed Agents で自律実装 → PR 作成
+#
+name: Claude Agent
+
+on:
+  issues:
+    types: [labeled]
+
+jobs:
+  implement:
+    # claude-work ラベルが付いたときだけ実行
+    if: github.event.label.name == 'claude-work'
+    runs-on: ubuntu-latest
+    timeout-minutes: 120  # 最大2時間（Slack質問の待ち時間含む）
+
+    steps:
+      - name: Checkout (trigger scripts)
+        uses: actions/checkout@v4
+
+      - name: Install dependencies
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq jq curl
+
+      - name: Acknowledge issue
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh issue comment ${{ github.event.issue.number }} \
+            --body "🤖 Claude Agent が Issue を受け取りました。実装を開始します。
+
+          進捗は Slack \`#dev-claude-agent\` チャンネルで確認できます。"
+
+      - name: Run Claude Agent
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          AGENT_ID: ${{ secrets.MANAGED_AGENT_ID }}
+          ENVIRONMENT_ID: ${{ secrets.MANAGED_AGENT_ENVIRONMENT_ID }}
+          GITHUB_TOKEN: ${{ secrets.AGENT_GITHUB_TOKEN }}
+          GITHUB_REPO: ${{ github.repository }}
+          ISSUE_NUMBER: ${{ github.event.issue.number }}
+          ISSUE_TITLE: ${{ github.event.issue.title }}
+          ISSUE_BODY: ${{ github.event.issue.body }}
+          SLACK_BOT_TOKEN: ${{ secrets.SLACK_BOT_TOKEN }}
+          SLACK_CHANNEL_ID: ${{ secrets.SLACK_CHANNEL_ID }}
+        run: |
+          bash scripts/trigger-session.sh
+
+      - name: Comment on failure
+        if: failure()
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh issue comment ${{ github.event.issue.number }} \
+            --body "❌ Claude Agent の実行に失敗しました。ログを確認してください。
+
+          [Actions ログ](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }})"
